@@ -2,7 +2,7 @@
 ![light-wait logo](img/light-wait-logo.png)
 
 
-`light-wait` is a blogging platform to produce light (as in features), minimal wait (as in small) content from markdown.
+`light-wait` is a blogging platform to produce light (as in features), minimal wait (as in fast to download) content from markdown.
 
 Light-wait produces the bare minimum blog content from markdown files:
 * simple overview page with latest posts
@@ -26,7 +26,7 @@ Usage: python light-wait.py [OPTIONS]
 optional arguments:
   -g GENERATE, --generate DIRECTORY (target directory)
                         
-  -n NAME, --name NAME  (unique name of a post, name of markdown file without extension)
+  -n NAME, --name NAME  (unique name of markdown file, without extension)
   
   -d DESCRIPTION, --description DESCRIPTION (short description of a post)
                         
@@ -45,6 +45,7 @@ optional arguments:
 2. Install dependencies via pipenv
 
     + `$ pipinv install`
+    + `$ pipinv shell`
 
 
 Use light-wait to generate blog content from existing markdown in two steps. First, 
@@ -52,14 +53,14 @@ copy your markdown files to the markdown directory and create metadata for each
 file copied:
 
 ```
- $ cp firstpost.md markdown/
- $ python light-wait.py -n firstpost -d 'How it feels to be the first post' -t milestone
+ $ cp workload.md markdown/
+ $ python lightwait.py -n workload -d 'the thing about workloads..' -t systems
 ```
 
 Step two, generate static web content:
 
 ```
- $ python light-wait.py -g /home/user/website
+ $ python lightwait.py -g /home/user/website
 ```
 
 The generated content can be copied to a web server document root. Here is an example 
@@ -94,6 +95,28 @@ be introduced to automatically generate the metadata from the markdown files. Ge
 metadata is  placed: 
 
     + under metadata/
+
+**Running local webserver Example**
+---
+The following is an example of running lighttpd, a fast and lightweight web server,
+and generating web content from markdown files, using light-wait.
+
+To install lighttpd on MacOS using homebrew
+
+```
+ $ brew update 
+ $ brew install lighttpd
+```
+
+This creates a Docroot at /usr/local/var/www
+
+Now generate content using light-wait:
+
+```
+ $ python lightwait.py -g /usr/local/var/www/htdocs 
+```
+
+Then open a browser to http://localhost:8080/
 
 **How to Contribute**
 ---
