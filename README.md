@@ -1,2 +1,2 @@
 # light-wait
-blogging platform to product light (as in size) content from markdown
+blogging platform to produce light (as in size) content from markdown
