@@ -1,0 +1,23 @@
+{% extends "base.index" %}
+{% block content %}
+<head>
+  <title>{{ j.title }} </title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="language" content="en" />
+  <meta name="description" content="{{ j.description }} "/>
+  <link rel="icon" type="image/ico" href="../../image/favicon.ico" />
+  <link rel="canonical" href="https://127.0.0.1/content/{{ j.title }}/" />
+  <link rel="alternate" type="application/rss+xml" href="../rss.xml" />
+  <link rel="stylesheet" href="../../css/main.css" />
+</head>
+<body>
+<main>
+<h3><a href="./">{{ j.description }} </a></h3>
+<section>({{ j.date }} {{ j.tags }}) </section>
+
+{{ j.content }}
+
+</main>
+<hr>
+{% endblock %}

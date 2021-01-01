@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+{% block content %}{% endblock %}
+
+<footer>
+  <nav>
+    <a href="/"> [ Home ] </a>
+    <a href="/content/rss.xml"> [ Feed ] </a>
+    <a href="https://github.com/mechregard/light-wait"> [ GitHub ] </a>
+  </nav>
+  &copy; 1998&ndash;2020 MechRegard
+</footer>
+</body>
+</html>
+
