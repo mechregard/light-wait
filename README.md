@@ -27,14 +27,15 @@ Usage: python light-wait.py [OPTIONS]
 
 
 optional arguments:
-  -g GENERATE, --generate DIRECTORY (target directory)
-                        
-  -n NAME, --name NAME  (unique name of markdown file, without extension)
+  -c COMMAND, --command COMMAND # import or generate
   
-  -d DESCRIPTION, --description DESCRIPTION (short description of a post)
-                        
-  -t TAGS, --tags TAGS  (comma separated list of tags or categories)
+  -f FILE, --file FILE          # import src markdown file path
+  -n NAME, --name NAME          # import short unique name
+  -d DESCRIPTION, --description DESCRIPTION  # import description
+  -t TAGS, --tags TAGS          # import tag (category) list
   
+  -o OUTPUT, --output OUTPUT    # generate output directory
+                        
   -h, --help            (show this help message and exit)  
 ```
 
@@ -122,6 +123,13 @@ Now generate content using light-wait:
 ```
 
 Then open a browser to http://localhost:8080/
+
+**Tool Chain**
+---
+markdown
+rss feed
+favicon
+https://redmine.lighttpd.net/projects/1/wiki/HowToInstallOnOSX
 
 **How to Contribute**
 ---
