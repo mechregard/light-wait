@@ -109,14 +109,16 @@ To install lighttpd on MacOS using homebrew
 ```
  $ brew update 
  $ brew install lighttpd
+ $ brew services start lighttpd
 ```
 
-This creates a Docroot at /usr/local/var/www
+This installs a default configuration file /usr/local/etc/lighttpd/lighttpd.conf
+which uses port 8080 and a Docroot at /usr/local/var/www
 
 Now generate content using light-wait:
 
 ```
- $ python lightwait.py -g /usr/local/var/www/htdocs 
+ $ python lightwait.py -g /usr/local/var/www/
 ```
 
 Then open a browser to http://localhost:8080/
