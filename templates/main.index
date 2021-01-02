@@ -6,14 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="language" content="en">
   <meta name="description" content="software and artifical intelligence"/>
-  <link rel="icon" type="image/ico" href="./image/favicon.ico" />
+  <link rel="icon" type="image/ico" href="/image/favicon.ico" />
   <link rel="canonical" href="https://127.0.0.1/">
-  <link rel="alternate" type="application/rss+xml" href="./content/rss.xml">
-  <link rel="stylesheet" href="./css/main.css">
+  <link rel="alternate" type="application/rss+xml" href="/content/rss.xml">
+  <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
 <main>
-<h1><a href="./">Dive</a></h1>
+<h2><a href="./">Dive</a></h2>
 deeper into
 <nav>
   {% for tag in j.tags -%}

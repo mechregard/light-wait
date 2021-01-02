@@ -83,7 +83,7 @@ class LightWait(object):
       with tags_file.open() as json_file:
         return json.load(json_file)
     else:
-      return {'posts':[]} 
+      return {'tag': tag, 'posts':[]} 
 
   def _get_all_tags(self, pj):
     tags = set() 
