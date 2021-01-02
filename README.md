@@ -1,6 +1,9 @@
 
 ![light-wait logo](img/light-wait-logo.png)
 
+![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/mechregard/light-wait)
+[![License: CC0-1.0](https://img.shields.io/badge/License-CC0%201.0-lightgrey.svg)](http://creativecommons.org/publicdomain/zero/1.0/)
+![Keybase PGP](https://img.shields.io/keybase/pgp/dlange)
 
 `light-wait` is a blogging platform to produce light (as in features), minimal wait (as in fast to download) content from markdown.
 
