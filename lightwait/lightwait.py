@@ -10,6 +10,8 @@ from jinja2 import Environment, FileSystemLoader
 import markdown
 import json
 from feedgen.feed import FeedGenerator
+from .exception import LightwaitException
+
 
 class LightWait(object):
     """
@@ -17,7 +19,7 @@ class LightWait(object):
     Light and fast blogging platform to generate
     blog posts from your markdown
 
-    minimal clean css focusing on limited size and standards
+    minimal clean css focusing on standards and limited download size
 
     """
 
@@ -35,6 +37,16 @@ class LightWait(object):
     CONFIG_FILE = 'lightwait.ini'
 
     def __init__(self):
+        """
+        Set up logging and prepare lightwait HOME directory contents
+        This includes static files copied from the package, as well
+        as directories to hold imported markdown and metadata
+
+        If configuration/content exists under the lightwait HOME directory, then
+        the content is NOT overwritten. This is so a user can modify
+        this configuration or content.
+
+        """
         logging.basicConfig(level=logging.DEBUG)
         home_path = Path('~').expanduser()
         self.base = home_path / self.LIGHTWAIT_HOME
@@ -58,12 +70,20 @@ class LightWait(object):
         self.config.read(self.config_path.as_posix())
         self.URL = self.config.get('lw', 'url')
 
-
-    def _init_home(self, subdirs):
-        for dir in subdirs:
-            dir.mkdir(exist_ok=True)
-
     def import_md(self, src, name, description, tags):
+        """
+
+        Given the source name of a markdown file, along with information about
+        the file contents, copy the file to the lightwait HOME directory under
+        a unique name and create metadata for the file.
+
+        If the name given is not unique, toss an exception
+
+        NOTE: an alternative import method could determine title, description
+        and tags directly from the source markdown file, so bulk import of
+        markdown could be supported
+
+        """
         self._save_markdown(src, name)
         self._save_metadata(
             {
@@ -75,6 +95,15 @@ class LightWait(object):
         )
 
     def generate(self, stage_dir):
+        """
+
+        Given the directory target for the generated content,
+        generate blog posts from each metadata post
+        and associated imported markdown file,
+        generate main and tags indexes using metadata posts,
+        generate rss feed using metadata posts
+
+        """
         stage_path = self._prepare_stage(stage_dir)
         self._generate_posts(stage_path)
         self._generate_indexes(stage_path)
@@ -83,10 +112,18 @@ class LightWait(object):
     #
     # import functions, mainly metadata management
 
+    def _init_home(self, subdirs):
+        for d in subdirs:
+            d.mkdir(exist_ok=True)
+
     def _save_markdown(self, src, name):
+        logging.debug("Save md " + name)
         markdown_name = name+'.md'
         markdown_path = self.markdown / markdown_name
-        copyfile(src, markdown_path.as_posix())
+        if not markdown_path.exists():
+            copyfile(src, markdown_path.as_posix())
+        else:
+            raise LightwaitException("Name for markdown already exists")
 
     def _save_metadata(self, metadata):
         self._update_posts_metadata(metadata)
@@ -158,6 +195,7 @@ class LightWait(object):
         pj['tags'] = tags
         pj['blogtitle'] = self.config.get('lw', 'blogTitle')
         pj['blogsubtitle'] = self.config.get('lw', 'blogSubTitle')
+        pj['tagline'] = self.config.get('lw', 'blogTagLine')
 
         main_path = stage_path / "index.html"
         self._render("main.index", main_path, pj)

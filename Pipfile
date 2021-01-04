@@ -11,6 +11,7 @@ markdown = "*"
 feedgen = "*"
 light-wait = {editable = true, path = "."}
 twine = "*"
+pytest = "*"
 
 [requires]
 python_version = "3.7"

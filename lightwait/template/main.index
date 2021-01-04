@@ -14,7 +14,7 @@
 <body>
 <main>
 <h2><a href="/">{{ j.blogtitle }}</a></h2>
-deeper into
+{{ j.tagline }}
 <nav>
   {% for tag in j.tags -%}
     <a href="./tag-{{ tag }}.html">{{ tag }}</a>
