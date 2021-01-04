@@ -8,7 +8,7 @@
     <a href="/content/rss.xml"> [ Feed ] </a>
     <a href="https://github.com/mechregard/light-wait"> [ GitHub ] </a>
   </nav>
-  &copy; 1998&ndash;2020 MechRegard
+  {{ j.copyright }}
 </footer>
 </body>
 </html>

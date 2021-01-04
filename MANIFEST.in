@@ -1,0 +1,3 @@
+include lightwait/lightwait.ini
+recursive-include lightwait/www *
+recursive-include lightwait/template *

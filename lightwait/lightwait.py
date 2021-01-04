@@ -1,15 +1,15 @@
-import argparse
 import logging
 import datetime
 from pathlib import Path
 from shutil import copyfile
+import pkg_resources
+import configparser
 from distutils.dir_util import copy_tree
 from itertools import cycle
 from jinja2 import Environment, FileSystemLoader
 import markdown
 import json
 from feedgen.feed import FeedGenerator
-
 
 class LightWait(object):
     """
@@ -21,20 +21,47 @@ class LightWait(object):
 
     """
 
-    URL = "http://127.0.0.1/"
-
     # relative to stage path
     CONTENT = "content"
     TAG = "tag-"
 
-    # relative to code
+    # directory names for HOME
+    LIGHTWAIT_HOME = ".lightwait"
+    MARKDOWN = "markdown"
+    METADATA = "metadata"
+    TEMPLATE = "template"
     WWW = "www"
-    MARKDOWN = "markdown/"
-    METADATA = "metadata/"
-    METADATA_POSTS = METADATA + "posts.json"
+    # USER modifiable config file
+    CONFIG_FILE = 'lightwait.ini'
 
     def __init__(self):
         logging.basicConfig(level=logging.DEBUG)
+        home_path = Path('~').expanduser()
+        self.base = home_path / self.LIGHTWAIT_HOME
+        self.base.mkdir(exist_ok=True)
+        self.markdown = self.base / self.MARKDOWN
+        self.metadata = self.base / self.METADATA
+        self.template = self.base / self.TEMPLATE
+        self.www = self.base / self.WWW
+        self.config_path =  self.base / self.CONFIG_FILE
+        # if not installed in HOME then copy from package source
+        if not self.template.exists():
+            self._init_home([self.markdown, self.metadata, self.template, self.www])
+            copyfile(pkg_resources.resource_filename(__package__, self.CONFIG_FILE), self.config_path.as_posix())
+            copy_tree(pkg_resources.resource_filename(__package__, self.TEMPLATE), self.template.as_posix())
+            copy_tree(pkg_resources.resource_filename(__package__, self.WWW), self.www.as_posix())
+            logging.debug("Copied resources to: "+self.base.as_posix())
+        else:
+            logging.debug("Using existing: "+self.base.as_posix())
+        # read modifiable config
+        self.config = configparser.ConfigParser()
+        self.config.read(self.config_path.as_posix())
+        self.URL = self.config.get('lw', 'url')
+
+
+    def _init_home(self, subdirs):
+        for dir in subdirs:
+            dir.mkdir(exist_ok=True)
 
     def import_md(self, src, name, description, tags):
         self._save_markdown(src, name)
@@ -57,7 +84,9 @@ class LightWait(object):
     # import functions, mainly metadata management
 
     def _save_markdown(self, src, name):
-        copyfile(src, self.MARKDOWN + name)
+        markdown_name = name+'.md'
+        markdown_path = self.markdown / markdown_name
+        copyfile(src, markdown_path.as_posix())
 
     def _save_metadata(self, metadata):
         self._update_posts_metadata(metadata)
@@ -66,29 +95,33 @@ class LightWait(object):
         logging.debug("Imported " + metadata["title"])
 
     def _update_posts_metadata(self, metadata):
-        pj = self._get_posts_metadata()
-        pj["posts"].append(metadata)
-        with open(self.METADATA_POSTS, "w") as outfile:
-            json.dump(pj, outfile)
+        posts = self._get_posts_metadata()
+        posts["posts"].append(metadata)
+        posts_path = self.metadata / "posts.json"
+        with posts_path.open("w") as outfile:
+            json.dump(posts, outfile)
 
     def _update_tags(self, tag, metadata):
-        tj = self._get_tags_metadata(tag)
-        tj["posts"].append(metadata)
-        with open(self.METADATA + tag + ".json", "w") as outfile:
-            json.dump(tj, outfile)
+        tags = self._get_tags_metadata(tag)
+        tags["posts"].append(metadata)
+        tag_json = tag+".json"
+        tags_path = self.metadata / tag_json
+        with tags_path.open("w") as outfile:
+            json.dump(tags, outfile)
 
     def _get_posts_metadata(self):
-        posts_file = Path(self.METADATA_POSTS)
-        if posts_file.exists():
-            with open(self.METADATA_POSTS) as json_file:
+        posts_path = self.metadata / "posts.json"
+        if posts_path.exists():
+            with posts_path.open() as json_file:
                 return json.load(json_file)
         else:
             return {"posts": []}
 
     def _get_tags_metadata(self, tag):
-        tags_file = Path(self.METADATA + tag + ".json")
-        if tags_file.exists():
-            with tags_file.open() as json_file:
+        tag_json = tag+".json"
+        tags_path = self.metadata / tag_json
+        if tags_path.exists():
+            with tags_path.open() as json_file:
                 return json.load(json_file)
         else:
             return {"tag": tag, "posts": []}
@@ -104,25 +137,28 @@ class LightWait(object):
     # Generate html
 
     def _prepare_stage(self, stage_dir):
-        copy_tree(self.WWW, stage_dir)
+        copy_tree(self.www.as_posix(), stage_dir)
         return Path(stage_dir)
 
     def _generate_posts(self, stage_path):
         pj = self._get_posts_metadata()
         for p in pj["posts"]:
-            title = p["title"]
-            post_dir = stage_path / self.CONTENT / title
+            name = p["title"]
+            post_dir = stage_path / self.CONTENT / name
             post_dir.mkdir(parents=True, exist_ok=True)
             post_file = post_dir / "index.html"
             # augment post with content from markdown
-            p["content"] = self._get_content(title)
+            p['content'] = self._get_content(name)
             self._render("post.index", post_file, p)
-            logging.debug("generated " + title)
+            logging.debug("generated " + name)
 
     def _generate_indexes(self, stage_path):
         pj = self._get_posts_metadata()
         tags = self._get_all_tags(pj)
-        pj["tags"] = tags
+        pj['tags'] = tags
+        pj['blogtitle'] = self.config.get('lw', 'blogTitle')
+        pj['blogsubtitle'] = self.config.get('lw', 'blogSubTitle')
+
         main_path = stage_path / "index.html"
         self._render("main.index", main_path, pj)
         logging.debug("generated index.html")
@@ -146,52 +182,37 @@ class LightWait(object):
             fe.link(href=self.URL + "content/" + p["title"], rel="alternate")
             fe.published(p["date"] + " 00:00:00 GMT")
         rss_path = stage_path / self.CONTENT / "rss.xml"
-        feed.rss_file(str(rss_path), pretty=True)
+        feed.rss_file(rss_path.as_posix(), pretty=True)
         logging.debug("generated rss")
 
     def _create_feed(self):
         fg = FeedGenerator()
         fg.id(self.URL + "content")
-        fg.title("Dive")
-        fg.author({"name": "dlange", "email": "dlange@mechregard.dev"})
+        fg.title(self.config.get('lw', 'blogTitle'))
+        fg.author({"name": self.config.get('lw', 'blogAuthor'), "email": self.config.get('lw', 'blogAuthorEmail')})
         fg.link(href=self.URL, rel="alternate")
         fg.logo(self.URL + "image/favicon.ico")
-        fg.subtitle("development artificial intelligence")
+        fg.subtitle(self.config.get('lw', 'blogSubTitle'))
         fg.link(href=self.URL + "content/rss.xml", rel="self")
-        fg.language("en")
+        fg.language(self.config.get('lw', 'blogLang'))
         return fg
 
     def _get_content(self, name):
-        src_path = Path(self.MARKDOWN + name + ".md")
-        text = src_path.read_text()
+        markdown_name = name + '.md'
+        markdown_path = self.markdown / markdown_name
+        text = markdown_path.read_text()
         return markdown.markdown(text)
 
     def _render(self, template_name, outfile, data):
+        data['url'] = self.URL
+        data['lang'] = self.config.get('lw', 'blogLang')
+        data['copyright'] = self.config.get('lw', 'copyright')
+
         template = self._get_template(template_name)
         output = template.render(j=data)
         outfile.write_text(output)
 
     def _get_template(self, template_name):
-        file_loader = FileSystemLoader("templates")
+        file_loader = FileSystemLoader(self.template)
         env = Environment(loader=file_loader)
         return env.get_template(template_name)
-
-
-if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(description="Generate blog post")
-    parser.add_argument("-c", "--command", help="import or  generate")
-    # import options
-    parser.add_argument("-f", "--file", help="import markdown file path")
-    parser.add_argument("-n", "--name", type=str, help="import short unique name")
-    parser.add_argument("-d", "--description", type=str, help="import description")
-    parser.add_argument("-t", "--tags", type=str, help="import tags list")
-    # generate options
-    parser.add_argument("-o", "--output", help="generate output directory")
-    args = parser.parse_args()
-
-    lw = LightWait()
-    if args.command == "import":
-        lw.import_md(args.file, args.name, args.description, args.tags.split(","))
-    else:
-        lw.generate(args.output)

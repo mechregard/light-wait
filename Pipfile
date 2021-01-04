@@ -8,8 +8,9 @@ verify_ssl = true
 [packages]
 jinja2 = "*"
 markdown = "*"
-beautifulsoup4 = "*"
 feedgen = "*"
+light-wait = {editable = true, path = "."}
+twine = "*"
 
 [requires]
 python_version = "3.7"

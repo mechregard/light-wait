@@ -1,4 +1,6 @@
 Pipfile.lock
 .idea/
-markdown/
-metadata/
+.eggs/
+build
+dist
+lightwait.egg-info/
