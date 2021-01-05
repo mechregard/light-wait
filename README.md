@@ -141,7 +141,7 @@ Now generate content using light-wait:
 
 Then open a browser to http://localhost:8080/
 
-##Tool Chain and Frameworks
+## Tool Chain and Frameworks
 The following frameworks and tools enable Light-wait:
 
 * https://python-markdown.github.io/
@@ -155,17 +155,13 @@ The following frameworks and tools enable Light-wait:
 Details are provided under the `example` markdown
 
 
-**How to Contribute**
----
-
+## How to Contribute
 1. Clone repo and create a new branch: `$ git checkout https://github.com/mechregard/light-wait -b name_for_new_branch`.
 2. Make changes and test
 3. Submit Pull Request with comprehensive description of changes
 
 
-**Donations**
----
-
+## Donations
 This is free, open-source software. 
 
 
