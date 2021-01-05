@@ -51,7 +51,7 @@ the blog post, so it needs to be URL friendly.
 In this example, a markdown about signs is imported:
 
 ```
- $ lightwait -c import -f /some/markdown.md -n signs -d 'a new take on signs' -t traffic
+ $ lightwait -c import -f example/opensource.md -n opensourced -d 'How Light-wait was open-sourced' -t opensource
 ```
 
 To generate the static site content from the imported markdown, use the generate  command,
