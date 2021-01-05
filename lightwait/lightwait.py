@@ -47,7 +47,7 @@ class LightWait(object):
         this configuration or content.
 
         """
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.INFO)
         home_path = Path('~').expanduser()
         self.base = home_path / self.LIGHTWAIT_HOME
         self.base.mkdir(exist_ok=True)

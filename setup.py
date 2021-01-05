@@ -8,7 +8,7 @@ with open(path.join(DIR, 'README.md')) as f:
 
 
 setup(
-    name='lightwait8',
+    name='lightwait',
     packages=['lightwait'],
     description="Light-wait produces the bare minimum blog content from markdown files",
     long_description=README,

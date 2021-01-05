@@ -7,7 +7,7 @@ def main():
     """CLI Generate blog content"""
 
     parser = argparse.ArgumentParser(description="Generate blog post")
-    parser.add_argument("-c", "--command", help="import or  generate")
+    parser.add_argument("-c", "--command", help="import or  generate", required=True)
 
     # import options
     parser.add_argument("-f", "--file", help="import markdown file path")
@@ -21,7 +21,12 @@ def main():
 
     if args.command == "import":
         try:
-            LightWait().import_md(args.file, args.name, args.description, args.tags.split(","))
+            if args.file is not None and args.name is not None \
+                    and args.description is not None and args.tags is not None:
+                LightWait().import_md(args.file, args.name, args.description, args.tags.split(","))
+                print("Imported markdown:  ", args.file)
+            else:
+                parser.print_help()
         except LightwaitException as msg:
             print("Import failed:", msg)
         except:
@@ -29,7 +34,11 @@ def main():
 
     elif args.command == 'generate':
         try:
-            LightWait().generate(args.output)
+            if args.output is not None:
+                LightWait().generate(args.output)
+                print("Generated content to: ", args.output)
+            else:
+                parser.print_help()
         except LightwaitException as msg:
             print("Generate failed:", msg)
         except:

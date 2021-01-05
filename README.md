@@ -96,7 +96,7 @@ An example of using an override property is to be able to test locally but deplo
 
 ```INI
 [DEFAULT]
-url = http://localhost:9009/
+url = http://localhost:8080/
 
 [lw]
 url = http://some.domain/
