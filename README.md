@@ -1,24 +1,23 @@
 
-![light-wait logo](img/light-wait-logo.png)
+![light-wait](img/light-wait-logo.png)
 
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/mechregard/light-wait)
 [![License: CC0-1.0](https://img.shields.io/badge/License-CC0%201.0-lightgrey.svg)](http://creativecommons.org/publicdomain/zero/1.0/)
 ![Keybase PGP](https://img.shields.io/keybase/pgp/dlange)
 
-`light-wait` is a blogging platform to produce light (as in features), minimal wait (as in fast to download) content from markdown.
+`light-wait` is a blogging platform to produce light (as in features), minimal wait (as in fast to download) web content from markdown.
 
 Light-wait produces the bare minimum blog content from markdown files:
-* simple overview page with latest posts
-* posts per tag (category)
+* overview and per-tag (category) indexes
 * RSS feed
+* configuration file to simplify customization 
 
-Example screenshot of blog content:
+Here is an example screen-shot of blog content:
 
 ![GIF demo](img/screen.png)
 
 
-**Usage**
----
+## Usage
 
 ```
 Usage: python light-wait.py [OPTIONS]
@@ -39,39 +38,43 @@ optional arguments:
   -h, --help                    # show this help message and exit  
 ```
 
-**Quick Start**
----
+## Quick Start
 
 1. Install with pip
 
-    + `$ pip install -i https://pypi.org/simple/ lightwait`
+    + `$ pip install lightwait`
 
-Use light-wait to generate blog content from existing markdown. First, import your markdown files. 
-Here is an example using a markdown about signs:
+Use light-wait to generate blog content from existing markdown. First, import your markdown files, 
+providing a unique name, description and a list of tags. The name will be used in the URL of 
+the blog post, so it needs to be URL friendly.
+ 
+In this example, a markdown about signs is imported:
 
 ```
  $ lightwait -c import -f /some/markdown.md -n signs -d 'a new take on signs' -t traffic
 ```
 
-Next, generate the static content and save to a directory:
+To generate the static site content from the imported markdown, use the generate  command,
+providing the output directory:
 
 ```
  $ lightwait -c generate -o /usr/local/var/www/
 ```
 
-The generated content can be copied to a web server document root. Here is an example 
-of running a simple python web server locally using the content generated above:
+The generated content can be directly placed into a docroot of a locally running web server like above, 
+or staged and transferred to a remote host. The URL is configurable (see Configuration Options below).
+A python web server can be used to verify the content:
 
 ```
  $ cd /usr/local/var/www/
  $ python3 -m http.server
 ```
 
-**Configuration Options**
----
+## Configuration Options
 
-Light-wait is designed with customization in mind. Under the HOME_LIGHTWAIT directory is a
-INI config file (lightwait.ini):
+Light-wait is designed with customization in mind. When Light-wait is first run, a directory 
+is created under the user home directory. This is called `.lightwait` and it will hold
+configuration, CSS, templates and imported markdown and metadata:
 
 ```
  $ cd ~/.lightwait
@@ -79,30 +82,45 @@ INI config file (lightwait.ini):
  lightwait.ini	markdown	metadata	template	www
  $
 ```
-This python INI file (see configparser) has two sections, DEFAULT and 'lw'. The 'lw' section includes and 
-overrides properties in DEFAULT. You can set values in DEFAULT and override any property in lw.
+These files will only be copied if this initial set does not exist- you can freely modify
+them, or if you wish to start over, remove them for Light-wait to re-initialize.
 
-These properties are used both in the html templates and the RSS properties.
+The most important user-defined configurations are held in the `lightwait.ini` file. This
+is a python INI file (see configparser), containing a default configuration section and the 
+possibility to have multiple overriding configuration sections.
 
-Also under HOME_LIGHTWAIT is the html template directory and static content www directory. 
+Light-wait uses the `lw` section and inherits all the defaults. The simplist way to configure
+is to update all of the default properties and not have any override properties.
 
-The html temeplates are jinja templates, structured as follows:
+An example of using an override property is to be able to test locally but deploy remotely:
 
-    + base template with footer is templates/base.index
-    + top level index.html is templates/main.index
-    + top level taglists html is templates/tag.index
-    + post html is templates/post.index
+```INI
+[DEFAULT]
+url = http://localhost:9009/
 
-The static content under www includes modifiable CSS and a favicon
+[lw]
+url = http://some.domain/
+```
 
-    + under www/css/main.css
-    + under www/image/favicon.ico
-    
+Refer to the `example` directory for a fully configured INI.
 
-**Running local web server Example**
----
+Feel free to further customize the static content output by changing the templates (jinja2  format) or
+css. These can be found here:
+
+```
+ ~/.lightwait/template/base.index  # Common including footer
+ ~/.lightwait/template/main.index  # for main index.html
+ ~/.lightwait/template/tag.index   # for tag-SOMETAG.html 
+ ~/.lightwait/template/post.index  # for each post
+ ~/.lightwait/www/css/main.css
+ $ ls
+ lightwait.ini	markdown	metadata	template	www
+```
+
+
+## Running local web server Example
 The following is an example of running lighttpd, a fast and lightweight web server,
-and generating web content from markdown files, using light-wait.
+and generating web content from markdown files, using Light-wait.
 
 To install lighttpd on MacOS using homebrew
 
@@ -112,8 +130,8 @@ To install lighttpd on MacOS using homebrew
  $ brew services start lighttpd
 ```
 
-This installs a default configuration file /usr/local/etc/lighttpd/lighttpd.conf
-which uses port 8080 and a Docroot at /usr/local/var/www
+This installs a default configuration file `/usr/local/etc/lighttpd/lighttpd.conf`
+ and a docroot at `/usr/local/var/www`
 
 Now generate content using light-wait:
 
@@ -123,12 +141,19 @@ Now generate content using light-wait:
 
 Then open a browser to http://localhost:8080/
 
-**Tool Chain**
----
-markdown
-rss feed
-favicon
-https://redmine.lighttpd.net/projects/1/wiki/HowToInstallOnOSX
+##Tool Chain and Frameworks
+The following frameworks and tools enable Light-wait:
+
+* https://python-markdown.github.io/
+* https://jinja.palletsprojects.com/en/2.11.x/
+* https://feedgen.kiesow.be/
+* https://github.com/psf/black
+* https://shields.io/
+* https://twine.readthedocs.io/en/latest/
+* https://pypi.org/
+
+Details are provided under the `example` markdown
+
 
 **How to Contribute**
 ---
@@ -144,5 +169,4 @@ https://redmine.lighttpd.net/projects/1/wiki/HowToInstallOnOSX
 This is free, open-source software. 
 
 
-credits image
-https://dauntlessfightclub.net/
+Image credit goes to: https://dauntlessfightclub.net/
