@@ -69,7 +69,8 @@ will include a pip install command using this test repo:
     pip install -i https://test.pypi.org/simple/ lightwait 
 
 #### create github release
-See the fine docs here:
+To clarify the release process, I first created a release branch then created a github release,
+from that release branch. Details nicely stated here:
 
     https://docs.github.com/en/free-pro-team@latest/github/administering-a-repository/managing-releases-in-a-repository
 
@@ -77,8 +78,7 @@ See the fine docs here:
 Create https://pypi.org/ account and repeat what was done for the test:
 
     twine check dist/*
-    twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-
+    twine upload dist/*
 
 #### Verify it all works!
 

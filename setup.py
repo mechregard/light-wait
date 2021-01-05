@@ -34,5 +34,5 @@ setup(
             "lightwait=lightwait.__main__:main",
         ]
     },
-    python_requires='>=3'
+    python_requires='>=3.7'
 )

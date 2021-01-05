@@ -1,9 +1,12 @@
 
 ![light-wait](img/light-wait-logo.png)
 
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/mechregard/light-wait)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/mechregard/light-wait)
 [![License: CC0-1.0](https://img.shields.io/badge/License-CC0%201.0-lightgrey.svg)](http://creativecommons.org/publicdomain/zero/1.0/)
 ![Keybase PGP](https://img.shields.io/keybase/pgp/dlange)
+![PyPI](https://img.shields.io/pypi/v/lightwait)
+![PyPI - Wheel](https://img.shields.io/pypi/wheel/lightwait)
 
 `light-wait` is a blogging platform to produce light (as in features), minimal wait (as in fast to download) web content from markdown.
 
@@ -53,6 +56,11 @@ In this example, a markdown about signs is imported:
 ```
  $ lightwait -c import -f example/opensource.md -n opensourced -d 'How Light-wait was open-sourced' -t opensource
 ```
+
+The generation of the static site content makes use of the imported markdown files as well 
+as user-updatable configurations (such as URL or blog title). See the Configuration Options 
+section below for details. You can immediately generate content using default configuration,
+review, then update properties as desired and repeat.
 
 To generate the static site content from the imported markdown, use the generate  command,
 providing the output directory:
