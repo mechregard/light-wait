@@ -18,7 +18,7 @@ setup(
         'markdown',
         'feedgen'
     ],
-    version='0.0.1',
+    version='0.0.2',
     url='http://github.com/mechregard/light-wait',
     author='dlange',
     author_email='dave.lange@gmail.com',
