@@ -2,6 +2,7 @@ import logging
 import datetime
 from pathlib import Path
 from shutil import copyfile
+from shutil import copy2
 import pkg_resources
 import configparser
 from distutils.dir_util import copy_tree
@@ -84,13 +85,13 @@ class LightWait(object):
         markdown could be supported
 
         """
-        self._save_markdown(src, name)
+        created = self._save_markdown(src, name)
         self._save_metadata(
             {
                 "title": name,
                 "description": description,
                 "tags": tags,
-                "date": datetime.datetime.now().strftime("%d %b %Y"),
+                "date": created.strftime("%d %b %Y"),
             }
         )
 
@@ -117,11 +118,11 @@ class LightWait(object):
             d.mkdir(exist_ok=True)
 
     def _save_markdown(self, src, name):
-        logging.debug("Save md " + name)
         markdown_name = name+'.md'
         markdown_path = self.markdown / markdown_name
         if not markdown_path.exists():
-            copyfile(src, markdown_path.as_posix())
+            copy2(src, markdown_path.as_posix())
+            return datetime.datetime.fromtimestamp(markdown_path.stat().st_mtime)
         else:
             raise LightwaitException("Name for markdown already exists")
 
