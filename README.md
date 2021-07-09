@@ -29,13 +29,14 @@ Usage: python light-wait.py [OPTIONS]
 
 
 optional arguments:
-  -c COMMAND, --command COMMAND # import or generate
+  -c COMMAND, --command COMMAND # import, bulk or generate
   
   -f FILE, --file FILE          # import src markdown file path
   -n NAME, --name NAME          # import short unique name
   -d DESCRIPTION, --description DESCRIPTION  # import description
   -t TAGS, --tags TAGS          # import tag (category) list
-  
+ 
+  -s SOURCE, --src SOURCE       # import from (source) directory 
   -o OUTPUT, --output OUTPUT    # generate output directory
                         
   -h, --help                    # show this help message and exit  
@@ -51,10 +52,23 @@ Use light-wait to generate blog content from existing markdown. First, import yo
 providing a unique name, description and a list of tags. The name will be used in the URL of 
 the blog post, so it needs to be URL friendly.
  
-In this example, a markdown about signs is imported:
+In this example, a markdown about opensource is imported:
 
 ```
  $ lightwait -c import -f example/opensource.md -n opensourced -d 'How Light-wait was open-sourced' -t opensource
+```
+
+If you have a directory of markdown files, they can be bulk imported using the `bulk`command.
+The metadata for description and tags (and optionally publish date) are parsed from the initial 
+lines of each markdown file, in dictionary property format:
+
+```
+ $ head -3 mydir/pet.md
+description:Prompts vs fine-tune
+tags:research
+date:21 apr 2021
+
+ $ lightwait -c bulk -s mydir/
 ```
 
 The generation of the static site content makes use of the imported markdown files as well 
