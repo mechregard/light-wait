@@ -1,8 +1,12 @@
 import logging
 import datetime
+from datetime import datetime
+from typing import List, Set, Dict
 from pathlib import Path
+import tempfile
 from shutil import copyfile
 from shutil import copy2
+import os
 import pkg_resources
 import configparser
 from distutils.dir_util import copy_tree
@@ -71,7 +75,11 @@ class LightWait(object):
         self.config.read(self.config_path.as_posix())
         self.URL = self.config.get('lw', 'url')
 
-    def import_md(self, src, name, description, tags):
+    def import_md(self,
+                  src: str,
+                  name: str,
+                  description: str,
+                  tags: List[str]) -> None:
         """
 
         Given the source name of a markdown file, along with information about
@@ -85,19 +93,28 @@ class LightWait(object):
         markdown could be supported
 
         """
-        created = self._save_markdown(src, name)
-        self._save_metadata(
-            {
-                "title": name,
-                "description": description,
-                "tags": tags,
-                "date": created.strftime("%d %b %Y"),
-            }
-        )
+        date = self._discover_date(src)
+        self._save_data(src, name, description, tags, date)
 
-    def generate(self, stage_dir):
+    def import_dir(self, src: str) -> None:
         """
 
+        Given the source dir containing one ore more markdown files,
+        copy the file to the lightwait HOME directory under
+        a unique name and create metadata for the file.
+
+        If the name given is not unique, toss an exception
+        """
+        for file in os.listdir(src):
+            if file.endswith(".md"):
+                file_path = os.path.join(src, file)
+                name = os.path.splitext(file)[0]
+                description, tags, date, tmp_filename = self._parse_file_metadata(file_path)
+                self._save_data(tmp_filename, name, description, tags, date)
+                os.remove(tmp_filename)
+
+    def generate(self, stage_dir: str) -> None:
+        """
         Given the directory target for the generated content,
         generate blog posts from each metadata post
         and associated imported markdown file,
@@ -110,36 +127,71 @@ class LightWait(object):
         self._generate_indexes(stage_path)
         self._generate_rss(stage_path)
 
+    def export(self, dir: str) -> None:
+        """
+        """
+        output_path = Path(dir)
+        self._generate_output(output_path)
+
     #
     # import functions, mainly metadata management
 
-    def _init_home(self, subdirs):
+    @staticmethod
+    def _init_home(subdirs: List[Path]) -> None:
         for d in subdirs:
             d.mkdir(exist_ok=True)
 
-    def _save_markdown(self, src, name):
-        markdown_name = name+'.md'
+    @staticmethod
+    def _parse_file_metadata(src: str):
+        metadata = {}
+        with open(src, 'r') as md_file:
+            for lines in range(3):
+                k, v = md_file.readline().split(":", 1)
+                metadata[k] = v.rstrip()
+            buffer = md_file.read()
+
+        # create a temp file that strips out above metadata lines
+        tmp_file = tempfile.NamedTemporaryFile(delete=False)
+        with open(tmp_file.name, 'w') as f:
+            f.write(buffer)
+        # answer back discovered properties and new tmpfile
+        return metadata["description"], metadata["tags"].split(","), metadata["date"], tmp_file.name
+
+    def _save_data(self, src, name, description, tags, date):
+        markdown_name = name + '.md'
         markdown_path = self.markdown / markdown_name
         if not markdown_path.exists():
             copy2(src, markdown_path.as_posix())
-            return datetime.datetime.fromtimestamp(markdown_path.stat().st_mtime)
+            self._save_metadata(
+                {
+                    "title": name,
+                    "description": description,
+                    "tags": tags,
+                    "date": date,
+                }
+            )
         else:
             raise LightwaitException("Name for markdown already exists")
 
-    def _save_metadata(self, metadata):
+    @staticmethod
+    def _discover_date(file_path: Path) -> str:
+        stamp = datetime.datetime.fromtimestamp(file_path.stat().st_mtime)
+        return stamp.strftime("%d %b %Y")
+
+    def _save_metadata(self, metadata: Dict) -> None:
         self._update_posts_metadata(metadata)
         for tag in metadata["tags"]:
             self._update_tags(tag, metadata)
         logging.debug("Imported " + metadata["title"])
 
-    def _update_posts_metadata(self, metadata):
+    def _update_posts_metadata(self, metadata: Dict) -> None:
         posts = self._get_posts_metadata()
         posts["posts"].append(metadata)
         posts_path = self.metadata / "posts.json"
         with posts_path.open("w") as outfile:
             json.dump(posts, outfile)
 
-    def _update_tags(self, tag, metadata):
+    def _update_tags(self, tag: str, metadata: Dict) -> None:
         tags = self._get_tags_metadata(tag)
         tags["posts"].append(metadata)
         tag_json = tag+".json"
@@ -147,24 +199,34 @@ class LightWait(object):
         with tags_path.open("w") as outfile:
             json.dump(tags, outfile)
 
-    def _get_posts_metadata(self):
+    def _get_posts_metadata(self) -> Dict:
+        sorted_posts = []
         posts_path = self.metadata / "posts.json"
         if posts_path.exists():
             with posts_path.open() as json_file:
-                return json.load(json_file)
-        else:
-            return {"posts": []}
+                sorted_posts = self._sort_by_date(json.load(json_file)["posts"])
+        return {
+            "posts": sorted_posts
+        }
 
-    def _get_tags_metadata(self, tag):
+    def _get_tags_metadata(self, tag: str) -> Dict:
+        sorted_posts = []
         tag_json = tag+".json"
         tags_path = self.metadata / tag_json
         if tags_path.exists():
             with tags_path.open() as json_file:
-                return json.load(json_file)
-        else:
-            return {"tag": tag, "posts": []}
+                sorted_posts = self._sort_by_date(json.load(json_file)["posts"])
+        return {
+            "tag": tag,
+            "posts": sorted_posts
+        }
 
-    def _get_all_tags(self, pj):
+    @staticmethod
+    def _sort_by_date(posts: List) -> List:
+        return sorted(posts, key=lambda x: datetime.strptime(x['date'], '%d %b %Y'), reverse=True)
+
+    @staticmethod
+    def _get_all_tags(pj: Dict) -> Set:
         tags = set()
         for p in pj["posts"]:
             for tag in p["tags"]:
@@ -174,11 +236,11 @@ class LightWait(object):
     #
     # Generate html
 
-    def _prepare_stage(self, stage_dir):
+    def _prepare_stage(self, stage_dir: str) -> Path:
         copy_tree(self.www.as_posix(), stage_dir)
         return Path(stage_dir)
 
-    def _generate_posts(self, stage_path):
+    def _generate_posts(self, stage_path: Path) -> None:
         pj = self._get_posts_metadata()
         for p in pj["posts"]:
             name = p["title"]
@@ -190,7 +252,7 @@ class LightWait(object):
             self._render("post.index", post_file, p)
             logging.debug("generated " + name)
 
-    def _generate_indexes(self, stage_path):
+    def _generate_indexes(self, stage_path: Path) -> None:
         pj = self._get_posts_metadata()
         tags = self._get_all_tags(pj)
         pj['tags'] = tags
@@ -208,10 +270,10 @@ class LightWait(object):
             self._render("tag.index", tag_path, tj)
             logging.debug("generated tags " + tag)
 
-    def _generate_rss(self, stage_path):
+    def _generate_rss(self, stage_path: Path) -> None:
         feed = self._create_feed()
         pj = self._get_posts_metadata()
-        for p in pj["posts"]:
+        for p in reversed(pj["posts"]):
             fe = feed.add_entry()
             fe.id(self.URL + "content/" + p["title"])
             fe.title(p["title"])
@@ -224,7 +286,24 @@ class LightWait(object):
         feed.rss_file(rss_path.as_posix(), pretty=True)
         logging.debug("generated rss")
 
-    def _create_feed(self):
+    def _generate_output(self, out_path: Path) -> None:
+        pj = self._get_posts_metadata()
+        for p in pj["posts"]:
+            tags = ",".join(p['tags'])
+            markdown_name = p['title'] + '.md'
+            markdown_path = self.markdown / markdown_name
+            out_full_path = out_path / markdown_name
+            if markdown_path.exists():
+                with open(markdown_path.as_posix(), 'r') as f:
+                    content = f.read()
+                markdown = "description:"+p['description']+'\n'
+                markdown += "tags:"+tags+'\n'
+                markdown += "date:"+p['date']+'\n'
+                markdown += content
+                with open(out_full_path, 'w') as ff:
+                    ff.write(markdown)
+
+    def _create_feed(self) -> FeedGenerator:
         fg = FeedGenerator()
         fg.id(self.URL + "content")
         fg.title(self.config.get('lw', 'blogTitle'))
@@ -236,13 +315,13 @@ class LightWait(object):
         fg.language(self.config.get('lw', 'blogLang'))
         return fg
 
-    def _get_content(self, name):
+    def _get_content(self, name: str) -> str:
         markdown_name = name + '.md'
         markdown_path = self.markdown / markdown_name
         text = markdown_path.read_text()
         return markdown.markdown(text)
 
-    def _render(self, template_name, outfile, data):
+    def _render(self, template_name: str, outfile: Path, data: Dict) -> None:
         data['url'] = self.URL
         data['lang'] = self.config.get('lw', 'blogLang')
         data['copyright'] = self.config.get('lw', 'copyright')
@@ -251,7 +330,7 @@ class LightWait(object):
         output = template.render(j=data)
         outfile.write_text(output)
 
-    def _get_template(self, template_name):
+    def _get_template(self, template_name: str):
         file_loader = FileSystemLoader(self.template)
         env = Environment(loader=file_loader)
         return env.get_template(template_name)
