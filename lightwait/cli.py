@@ -1,7 +1,7 @@
-import click
-from pathlib import Path
 import os
-from lightwait import LightWait
+from pathlib import Path
+import click
+from lightwait.lightwait import LightWait
 from lightwait.exception import LightwaitException
 
 
