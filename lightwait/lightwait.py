@@ -1,12 +1,12 @@
 import logging
-import datetime
 from datetime import datetime
-from typing import List, Set, Dict
+from typing import List, Set, Dict, Optional
 from pathlib import Path
-import tempfile
+from pathvalidate import sanitize_filename
+from itertools import takewhile
 from shutil import copyfile
 from shutil import copy2
-import os
+import hashlib
 import pkg_resources
 import configparser
 from distutils.dir_util import copy_tree
@@ -25,8 +25,12 @@ class LightWait(object):
     blog posts from your markdown
 
     minimal clean css focusing on standards and limited download size
-
     """
+    # metadata keys
+    MD_TITLE = "title"
+    MD_DESCRIPTION = "description"
+    MD_TAGS = "tags"
+    MD_DATE = "date"
 
     # relative to stage path
     CONTENT = "content"
@@ -40,8 +44,10 @@ class LightWait(object):
     WWW = "www"
     # USER modifiable config file
     CONFIG_FILE = 'lightwait.ini'
+    # Markdown comment prefix
+    MD_PREFIX = "[//]: #"
 
-    def __init__(self):
+    def __init__(self, debug: bool):
         """
         Set up logging and prepare lightwait HOME directory contents
         This includes static files copied from the package, as well
@@ -52,7 +58,8 @@ class LightWait(object):
         this configuration or content.
 
         """
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(format="%(levelname)s:%(funcName)s:%(message)s",
+                            level=logging.DEBUG if debug else logging.ERROR)
         home_path = Path('~').expanduser()
         self.base = home_path / self.LIGHTWAIT_HOME
         self.base.mkdir(exist_ok=True)
@@ -60,60 +67,52 @@ class LightWait(object):
         self.metadata = self.base / self.METADATA
         self.template = self.base / self.TEMPLATE
         self.www = self.base / self.WWW
-        self.config_path =  self.base / self.CONFIG_FILE
+        self.config_path = self.base / self.CONFIG_FILE
         # if not installed in HOME then copy from package source
         if not self.template.exists():
             self._init_home([self.markdown, self.metadata, self.template, self.www])
             copyfile(pkg_resources.resource_filename(__package__, self.CONFIG_FILE), self.config_path.as_posix())
             copy_tree(pkg_resources.resource_filename(__package__, self.TEMPLATE), self.template.as_posix())
             copy_tree(pkg_resources.resource_filename(__package__, self.WWW), self.www.as_posix())
-            logging.debug("Copied resources to: "+self.base.as_posix())
+            logging.info(f"Copied resources to: {self.base.as_posix()}")
         else:
-            logging.debug("Using existing: "+self.base.as_posix())
+            logging.info(f"Using existing: {self.base.as_posix()}")
         # read modifiable config
         self.config = configparser.ConfigParser()
         self.config.read(self.config_path.as_posix())
         self.URL = self.config.get('lw', 'url')
+        # functions
+        self.md_generator = {
+            LightWait.MD_TITLE: LightWait._gen_title,
+            LightWait.MD_DESCRIPTION: LightWait._gen_description,
+            LightWait.MD_TAGS: LightWait._gen_tag,
+            LightWait.MD_DATE: LightWait._gen_date
+        }
 
-    def import_md(self,
-                  src: str,
-                  name: str,
-                  description: str,
-                  tags: List[str]) -> None:
+    def post(self,
+             src_path: Path,
+             title: Optional[str] = None,
+             description: Optional[str] = None,
+             tags: Optional[str] = None) -> None:
         """
-
         Given the source name of a markdown file, along with information about
-        the file contents, copy the file to the lightwait HOME directory under
-        a unique name and create metadata for the file.
+        the file contents, create a 'post':
+          - copy the file to the lightwait HOME directory under a unique name
+          - update 'posts' file with post metadata
+          - update 'tags' file with post per tag metadata
 
-        If the name given is not unique, toss an exception
-
-        NOTE: an alternative import method could determine title, description
-        and tags directly from the source markdown file, so bulk import of
-        markdown could be supported
-
+        @param src_path:
+        @param title:
+        @param description:
+        @param tags:
+        @return:
         """
-        date = self._discover_date(src)
-        self._save_data(src, name, description, tags, date)
+        logging.info(f"Args: {src_path=} {title=} {description=} {tags=}")
+        metadata = self._input_metadata(src_path, title, description, tags)
+        logging.info(f"Generated metadata: {metadata}")
+        self._save_data(src_path, metadata)
 
-    def import_dir(self, src: str) -> None:
-        """
-
-        Given the source dir containing one ore more markdown files,
-        copy the file to the lightwait HOME directory under
-        a unique name and create metadata for the file.
-
-        If the name given is not unique, toss an exception
-        """
-        for file in os.listdir(src):
-            if file.endswith(".md"):
-                file_path = os.path.join(src, file)
-                name = os.path.splitext(file)[0]
-                description, tags, date, tmp_filename = self._parse_file_metadata(file_path)
-                self._save_data(tmp_filename, name, description, tags, date)
-                os.remove(tmp_filename)
-
-    def generate(self, stage_dir: str) -> None:
+    def generate(self, target_dir: Path) -> None:
         """
         Given the directory target for the generated content,
         generate blog posts from each metadata post
@@ -121,83 +120,128 @@ class LightWait(object):
         generate main and tags indexes using metadata posts,
         generate rss feed using metadata posts
 
+        @param target_dir:
+        @return:
         """
-        stage_path = self._prepare_stage(stage_dir)
+        logging.info(f"Args: {target_dir=}")
+        stage_path = self._prepare_stage(target_dir)
         self._generate_posts(stage_path)
         self._generate_indexes(stage_path)
         self._generate_rss(stage_path)
 
-    def export(self, dir: str) -> None:
+    def export(self, target_dir: Path) -> None:
         """
+        @param target_dir:
+        @return:
         """
-        output_path = Path(dir)
-        self._generate_output(output_path)
+        logging.info(f"Args: {target_dir=}")
+        self._generate_output(target_dir)
 
     #
     # import functions, mainly metadata management
+
+    def _input_metadata(self,
+                        src_path: Path,
+                        title: Optional[str],
+                        desc: Optional[str],
+                        tags: Optional[str]) -> Dict[str, str]:
+        """
+        Given a path to some markdown and a set of optional arguments,
+        answer back a fixed set of metadata.
+        """
+        file_md = self._parse_file_metadata(src_path)
+
+        # override any file metadata with any provided arguments
+        title = file_md.get(LightWait.MD_TITLE) if title is None else title
+        desc = file_md.get(LightWait.MD_DESCRIPTION) if desc is None else desc
+        tags = file_md.get(LightWait.MD_TAGS) if tags is None else tags
+        return {
+            LightWait.MD_TITLE: LightWait._to_posix(title),
+            LightWait.MD_DESCRIPTION: desc,
+            LightWait.MD_TAGS: [LightWait._to_posix(tag) for tag in tags.split(",")],
+            LightWait.MD_DATE: file_md.get(LightWait.MD_DATE)
+        }
+
+    @staticmethod
+    def _to_posix(src: str) -> str:
+        return sanitize_filename(src.replace(" ", "-"), replacement_text="-")
 
     @staticmethod
     def _init_home(subdirs: List[Path]) -> None:
         for d in subdirs:
             d.mkdir(exist_ok=True)
 
+    def _parse_file_metadata(self, src_path: Path) -> Dict[str, str]:
+        with open(src_path) as lines:
+            rs = list(takewhile(lambda x: x.startswith(LightWait.MD_PREFIX), lines))
+        metadata = LightWait._parse_comment_metadata(rs)
+        for k in self.md_generator.keys():
+            if k not in metadata:
+                metadata[k] = self.md_generator[k](src_path)
+        return metadata
+
     @staticmethod
-    def _parse_file_metadata(src: str):
-        metadata = {}
-        with open(src, 'r') as md_file:
-            for lines in range(3):
-                k, v = md_file.readline().split(":", 1)
-                metadata[k] = v.rstrip()
-            buffer = md_file.read()
+    def _parse_comment_metadata(lines: List[str]) -> Dict[str, str]:
+        """format of line is
+            [//]: # (key:value)
+        """
+        matched = {}
+        for li in lines:
+            match = li[li.find("(") + 1:li.find(")")].split(":")
+            matched[match[0]] = match[1]
+        return matched
 
-        # create a temp file that strips out above metadata lines
-        tmp_file = tempfile.NamedTemporaryFile(delete=False)
-        with open(tmp_file.name, 'w') as f:
-            f.write(buffer)
-        # answer back discovered properties and new tmpfile
-        return metadata["description"], metadata["tags"].split(","), metadata["date"], tmp_file.name
+    @staticmethod
+    def _gen_title(src_path: Path) -> str:
+        date = LightWait._gen_date(src_path)
+        uniq = hashlib.sha256(src_path.as_posix().encode('utf-8')).hexdigest()[:6]
+        title = f"{date}_{uniq}"
+        return title
 
-    def _save_data(self, src, name, description, tags, date):
-        markdown_name = name + '.md'
+    @staticmethod
+    def _gen_description(src_path: Path) -> str:
+        with open(src_path) as lines:
+            for line in lines.readlines():
+                if not line.startswith(LightWait.MD_PREFIX):
+                    candidate = line.strip(' #\n')
+                    if len(candidate) > 0:
+                        return candidate
+        return "no good description"
+
+    @staticmethod
+    def _gen_tag(file_path: Path) -> str:
+        return "general"
+
+    @staticmethod
+    def _gen_date(file_path: Path) -> str:
+        stamp = datetime.fromtimestamp(file_path.stat().st_mtime)
+        return stamp.strftime("%d %b %Y")
+
+    def _save_data(self,
+                   src_path: Path,
+                   metadata: Dict[str, str]) -> None:
+        markdown_name = metadata[LightWait.MD_TITLE] + '.md'
         markdown_path = self.markdown / markdown_name
         if not markdown_path.exists():
-            copy2(src, markdown_path.as_posix())
-            self._save_metadata(
-                {
-                    "title": name,
-                    "description": description,
-                    "tags": tags,
-                    "date": date,
-                }
-            )
+            copy2(src_path.as_posix(), markdown_path.as_posix())
+            self._save_metadata(metadata)
         else:
-            raise LightwaitException("Name for markdown already exists")
-
-    @staticmethod
-    def _discover_date(file_path: Path) -> str:
-        stamp = datetime.datetime.fromtimestamp(file_path.stat().st_mtime)
-        return stamp.strftime("%d %b %Y")
+            raise LightwaitException(f"Title {markdown_name} for markdown {src_path} already exists")
 
     def _save_metadata(self, metadata: Dict) -> None:
         self._update_posts_metadata(metadata)
         for tag in metadata["tags"]:
             self._update_tags(tag, metadata)
-        logging.debug("Imported " + metadata["title"])
 
     def _update_posts_metadata(self, metadata: Dict) -> None:
         posts = self._get_posts_metadata()
         posts["posts"].append(metadata)
-        posts_path = self.metadata / "posts.json"
-        with posts_path.open("w") as outfile:
-            json.dump(posts, outfile)
+        self._put_posts_metadata(posts)
 
-    def _update_tags(self, tag: str, metadata: Dict) -> None:
+    def _update_tags(self, tag: str, metadata: Dict[str,str]) -> None:
         tags = self._get_tags_metadata(tag)
         tags["posts"].append(metadata)
-        tag_json = tag+".json"
-        tags_path = self.metadata / tag_json
-        with tags_path.open("w") as outfile:
-            json.dump(tags, outfile)
+        self._put_tags_metadata(tag, tags)
 
     def _get_posts_metadata(self) -> Dict:
         sorted_posts = []
@@ -209,9 +253,14 @@ class LightWait(object):
             "posts": sorted_posts
         }
 
+    def _put_posts_metadata(self, posts: Dict) -> None:
+        posts_path = self.metadata / "posts.json"
+        with posts_path.open("w") as outfile:
+            json.dump(posts, outfile)
+
     def _get_tags_metadata(self, tag: str) -> Dict:
         sorted_posts = []
-        tag_json = tag+".json"
+        tag_json = tag + ".json"
         tags_path = self.metadata / tag_json
         if tags_path.exists():
             with tags_path.open() as json_file:
@@ -220,6 +269,12 @@ class LightWait(object):
             "tag": tag,
             "posts": sorted_posts
         }
+
+    def _put_tags_metadata(self, tag: str, tags: Dict) -> None:
+        tag_json = tag + ".json"
+        tags_path = self.metadata / tag_json
+        with tags_path.open("w") as outfile:
+            json.dump(tags, outfile)
 
     @staticmethod
     def _sort_by_date(posts: List) -> List:
@@ -236,9 +291,9 @@ class LightWait(object):
     #
     # Generate html
 
-    def _prepare_stage(self, stage_dir: str) -> Path:
-        copy_tree(self.www.as_posix(), stage_dir)
-        return Path(stage_dir)
+    def _prepare_stage(self, stage_dir: Path) -> Path:
+        copy_tree(self.www.as_posix(), stage_dir.as_posix())
+        return stage_dir
 
     def _generate_posts(self, stage_path: Path) -> None:
         pj = self._get_posts_metadata()
@@ -296,9 +351,9 @@ class LightWait(object):
             if markdown_path.exists():
                 with open(markdown_path.as_posix(), 'r') as f:
                     content = f.read()
-                markdown = "description:"+p['description']+'\n'
-                markdown += "tags:"+tags+'\n'
-                markdown += "date:"+p['date']+'\n'
+                markdown = "description:" + p['description'] + '\n'
+                markdown += "tags:" + tags + '\n'
+                markdown += "date:" + p['date'] + '\n'
                 markdown += content
                 with open(out_full_path, 'w') as ff:
                     ff.write(markdown)

@@ -24,9 +24,11 @@ def main():
 
     if args.command == "import":
         try:
-            if args.file is not None and args.name is not None \
-                    and args.description is not None and args.tags is not None:
-                LightWait().import_md(args.file, args.name, args.description, args.tags.split(","))
+            if args.file is not None:
+                LightWait().import_md(args.file,
+                                      name=args.name,
+                                      description=args.description,
+                                      tags=args.tags.split(","))
                 print("Imported markdown:  ", args.file)
             else:
                 parser.print_help()
