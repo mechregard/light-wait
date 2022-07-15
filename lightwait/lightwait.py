@@ -65,19 +65,19 @@ class LightWait(object):
         logging.basicConfig(format="%(levelname)s:%(funcName)s:%(message)s",
                             level=logging.DEBUG if debug else logging.ERROR)
         home_path = Path('~').expanduser()
-        self.base = home_path / self.LIGHTWAIT_HOME
+        self.base = home_path / LightWait.LIGHTWAIT_HOME
         self.base.mkdir(exist_ok=True)
-        self.markdown = self.base / self.MARKDOWN
-        self.metadata = self.base / self.METADATA
-        self.template = self.base / self.TEMPLATE
-        self.www = self.base / self.WWW
-        self.config_path = self.base / self.CONFIG_FILE
+        self.markdown = self.base / LightWait.MARKDOWN
+        self.metadata = self.base / LightWait.METADATA
+        self.template = self.base / LightWait.TEMPLATE
+        self.www = self.base / LightWait.WWW
+        self.config_path = self.base / LightWait.CONFIG_FILE
         # if not installed in HOME then copy from package source
         if not self.template.exists():
             self._init_home([self.markdown, self.metadata, self.template, self.www])
-            copyfile(pkg_resources.resource_filename(__package__, self.CONFIG_FILE), self.config_path.as_posix())
-            copy_tree(pkg_resources.resource_filename(__package__, self.TEMPLATE), self.template.as_posix())
-            copy_tree(pkg_resources.resource_filename(__package__, self.WWW), self.www.as_posix())
+            copyfile(pkg_resources.resource_filename(__package__, LightWait.CONFIG_FILE), self.config_path.as_posix())
+            copy_tree(pkg_resources.resource_filename(__package__, LightWait.TEMPLATE), self.template.as_posix())
+            copy_tree(pkg_resources.resource_filename(__package__, LightWait.WWW), self.www.as_posix())
             logging.info(f"Copied resources to: {self.base.as_posix()}")
         else:
             logging.info(f"Using existing: {self.base.as_posix()}")
@@ -170,7 +170,7 @@ class LightWait(object):
     def _to_posix(src: str) -> str:
         if src in LightWait.RESERVED_NAMES:
             raise LightwaitException(f"Name {src} is reserved")
-        return sanitize_filename(src.replace(" ", "-"), replacement_text="-")
+        return sanitize_filename(src.strip().replace(" ", "-"), replacement_text="-")
 
     @staticmethod
     def _init_home(subdirs: List[Path]) -> None:

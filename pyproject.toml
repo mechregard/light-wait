@@ -1,13 +1,26 @@
 [tool.poetry]
 name = "lightwait"
-version = "0.0.4"
+version = "0.0.1"
 description = "Light-wait produces the bare minimum blog content from markdown files"
 authors = ["dlange"]
 license = "CC0 1.0 Universal"
+readme = "README.md"
+repository = "https://github.com/mechregard/light-wait"
+keywords = ["blog", "markdown"]
+classifiers = [
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Text Processing :: Markup :: Markdown"
+]
+include = [
+    "LICENSE",
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-Jinja2 = "*"
+Jinja2 = "^3.1.2"
 Markdown = "^3.3.7"
 feedgen = "^0.9.0"
 pathvalidate = "^2.5.0"
