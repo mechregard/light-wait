@@ -5,12 +5,6 @@ Review the different license models available on the github project create page.
 If there is one you would like that does not exist, you can always copy over a LICENSE text 
 file to the project root later.
 
-#### Create cookiecutter project
-cookiecutter is a python tool to create default python projects. Install with pip
- 
-    pip install cookiecutter
-    cookiecutter https://github.com/kragniz/cookiecutter-pypackage-minimal
-
 #### Set up python environment for development
 I am using pyenv/pipenv for virtual python runtimes and sandboxed dependencies. Lots of blog 
 posts provide install details, but here is what I used from within
@@ -18,24 +12,31 @@ my new cookiecutter generated python project directory:
   
     pyenv install  3.8.2
     pyenv local 3.8.2
-    pip install pipenv
-    pipenv install
-    pipenv shell
+    curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
 
+#### Create cookiecutter project
+cookiecutter is a python tool to create default python projects. Install with pip
+ 
+    pip install cookiecutter
+    cookiecutter https://github.com/kragniz/cookiecutter-pypackage-minimal
 
-#### Setup tools 
-Install twine and create a setup.py script to handle dependencies, packaging etc. 
-A MANIFEST.in file can be used to selectively add/remove non-python files into the package.
-An example of a non-python file in Light-wait is the css file.
-Run the setup.py script with arguments for sdist and bdist:
+#### Poetry dependencies  
+Create poetry dependency management and build configuration file `pyproject.toml`
 
-    pipenv install twine
-    python setup.py sdist bdist_wheel
+    poetry init
+
+Update the `pyproject.toml` by adding dependencies for your project and for your development tooling. Use poetry
+update to resolve dependency versions and set within the `poetry.lock` file. Run poetry install to install
+the dependencies defined in the lock file. The poetry shell command provides a shell into the poetry virtual
+environment for your project.
+
+    poetry update
+    poetry install
+    poetry shell
 
 #### Configure tests
-Instal a test framework like pytest. The cookiecutter project will automatically create 
-a dummy test directory and example test.
-
+Instal a test framework like pytest under the toml file dev tools dependency section. 
+The cookiecutter project / poetry will automatically create a dummy test directory and example test.
 
 #### Create README
 Light-wait follows a growing README movement which focuses on basic usage and how to 
@@ -44,7 +45,6 @@ project characteristics. The Shields IO service provides ways to generate markdo
 links to dynamic badges, such as code size.
 
     https://shields.io/ 
-
 
 #### Code Formatter
 Install and run a code formatter. I used Black:
@@ -55,11 +55,17 @@ Install and run a code formatter. I used Black:
 #### Test packaging and deployment
 A key step in open sourcing is making the package available for others to direcctly use. The python 
 package repository pypi has a mirror https://test.pypi.org for testing your packaging and deploy. 
-Create an account in both, and test out with test.pypi. Use twine to verify and upload your 
-distribution to the test.pypi first:
+Create an account in both, and test with test.pypi. 
 
-    twine check dist/*
-    twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+First, build the project distribution. Make sure to first set the version in your toml file:
+
+    poetry build
+
+Point poetry to the testpypi repository using the poetry config command. Publish to the testpypi
+repository with the publish command, providing the repository name:
+
+    poetry config repositories.testpypi https://test.pypi.org/legacy/
+    poetry publish -r testpypi
 
 #### Veriy pip install from test.pypi
 After you uploaded your distribution, go to the test.pypi.org site and verify your upload. The 
@@ -69,16 +75,15 @@ will include a pip install command using this test repo:
     pip install -i https://test.pypi.org/simple/ lightwait 
 
 #### create github release
-To clarify the release process, I first created a release branch then created a github release,
+To clarify the release process, I first created a release branch then created a github release
 from that release branch. Details nicely stated here:
 
     https://docs.github.com/en/free-pro-team@latest/github/administering-a-repository/managing-releases-in-a-repository
 
 #### Do packaging and deployment for real
-Create https://pypi.org/ account and repeat what was done for the test:
+Create https://pypi.org/ account and run publish with no arguments to publish to the real pypi index:
 
-    twine check dist/*
-    twine upload dist/*
+     poetry publish
 
 #### Verify it all works!
 
