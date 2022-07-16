@@ -1,6 +1,4 @@
-Pipfile.lock
 .idea/
-.eggs/
+.tox/
 build
 dist
-lightwait.egg-info/
