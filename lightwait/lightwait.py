@@ -47,7 +47,7 @@ class LightWait(object):
     CONFIG_FILE = 'lightwait.ini'
     # metadata file holding posts
     POSTS_METADATA_NAME = "lw_posts"
-    RESERVED_NAMES = [POSTS_METADATA_NAME,]
+    RESERVED_NAMES = [POSTS_METADATA_NAME, ]
     # Markdown comment prefix
     MD_PREFIX = "[//]: #"
 
@@ -64,21 +64,21 @@ class LightWait(object):
         """
         logging.basicConfig(format="%(levelname)s:%(funcName)s:%(message)s",
                             level=logging.DEBUG if debug else logging.ERROR)
-        home_path = Path('~').expanduser()
+        home_path = self._get_home_path()
         self.base = home_path / LightWait.LIGHTWAIT_HOME
-        self.base.mkdir(exist_ok=True)
         self.markdown = self.base / LightWait.MARKDOWN
         self.metadata = self.base / LightWait.METADATA
         self.template = self.base / LightWait.TEMPLATE
         self.www = self.base / LightWait.WWW
         self.config_path = self.base / LightWait.CONFIG_FILE
         # if not installed in HOME then copy from package source
-        if not self.template.exists():
-            self._init_home([self.markdown, self.metadata, self.template, self.www])
-            copyfile(pkg_resources.resource_filename(__package__, LightWait.CONFIG_FILE), self.config_path.as_posix())
-            copy_tree(pkg_resources.resource_filename(__package__, LightWait.TEMPLATE), self.template.as_posix())
-            copy_tree(pkg_resources.resource_filename(__package__, LightWait.WWW), self.www.as_posix())
-            logging.info(f"Copied resources to: {self.base.as_posix()}")
+        if not self.base.exists():
+            self._install_home_dir(self.base,
+                                   self.markdown,
+                                   self.metadata,
+                                   self.template,
+                                   self.www,
+                                   self.config_path)
         else:
             logging.info(f"Using existing: {self.base.as_posix()}")
         # read modifiable config
@@ -142,6 +142,25 @@ class LightWait(object):
         self._generate_output(target_dir)
 
     #
+    # called by init to simplify testing
+    def _get_home_path(self) -> Path:
+        return Path('~').expanduser()
+
+    def _install_home_dir(self,
+                          base: Path,
+                          markdown: Path,
+                          metadata: Path,
+                          template: Path,
+                          www: Path,
+                          config: Path):
+        for d in [base, markdown, metadata, template, www]:
+            d.mkdir(exist_ok=True)
+        copyfile(pkg_resources.resource_filename(__package__, LightWait.CONFIG_FILE), config.as_posix())
+        copy_tree(pkg_resources.resource_filename(__package__, LightWait.TEMPLATE), template.as_posix())
+        copy_tree(pkg_resources.resource_filename(__package__, LightWait.WWW), www.as_posix())
+        logging.info(f"Copied resources to: {base.as_posix()}")
+
+    #
     # import functions, mainly metadata management
 
     def _input_metadata(self,
@@ -171,11 +190,6 @@ class LightWait(object):
         if src in LightWait.RESERVED_NAMES:
             raise LightwaitException(f"Name {src} is reserved")
         return sanitize_filename(src.strip().replace(" ", "-"), replacement_text="-")
-
-    @staticmethod
-    def _init_home(subdirs: List[Path]) -> None:
-        for d in subdirs:
-            d.mkdir(exist_ok=True)
 
     def _parse_file_metadata(self, src_path: Path) -> Dict[str, str]:
         with open(src_path) as lines:
@@ -238,17 +252,17 @@ class LightWait(object):
         else:
             raise LightwaitException(f"Title {markdown_name} for markdown {src_path} already exists")
 
-    def _save_metadata(self, metadata: Dict[str,Any]) -> None:
+    def _save_metadata(self, metadata: Dict[str, Any]) -> None:
         self._update_metadata(LightWait.POSTS_METADATA_NAME, metadata)
         for tag in metadata[LightWait.MD_TAGS]:
             self._update_metadata(tag, metadata)
 
-    def _update_metadata(self, name: str, metadata: Dict[str,Any]) -> None:
+    def _update_metadata(self, name: str, metadata: Dict[str, Any]) -> None:
         posts = self._get_metadata(name)
         posts.append(metadata)
         self._put_metadata(name, posts)
 
-    def _get_metadata(self, name: str) -> List[Dict[str,Any]]:
+    def _get_metadata(self, name: str) -> List[Dict[str, Any]]:
         sorted_posts = []
         filename = name + ".json"
         filepath = self.metadata / filename
@@ -257,18 +271,18 @@ class LightWait(object):
                 sorted_posts = self._sort_by_date(json.load(json_file))
         return sorted_posts
 
-    def _put_metadata(self, name: str, posts: List[Dict[str,Any]]) -> None:
+    def _put_metadata(self, name: str, posts: List[Dict[str, Any]]) -> None:
         filename = name + ".json"
         filepath = self.metadata / filename
         with filepath.open("w") as outfile:
             json.dump(posts, outfile)
 
     @staticmethod
-    def _sort_by_date(posts: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
+    def _sort_by_date(posts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return sorted(posts, key=lambda x: datetime.strptime(x['date'], '%d %b %Y'), reverse=True)
 
     @staticmethod
-    def _get_all_tags(posts: List[Dict[str,Any]]) -> Set:
+    def _get_all_tags(posts: List[Dict[str, Any]]) -> Set:
         tags = set()
         for p in posts:
             for tag in p[LightWait.MD_TAGS]:
@@ -369,7 +383,7 @@ class LightWait(object):
         text = markdown_path.read_text()
         return markdown.markdown(text)
 
-    def _render(self, template_name: str, outfile: Path, data: Dict[str,Any]) -> None:
+    def _render(self, template_name: str, outfile: Path, data: Dict[str, Any]) -> None:
         data['url'] = self.URL
         data['lang'] = self.config.get('lw', 'blogLang')
         data['copyright'] = self.config.get('lw', 'copyright')
