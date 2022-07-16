@@ -85,6 +85,7 @@ class LightWait(object):
         self.config = configparser.ConfigParser()
         self.config.read(self.config_path.as_posix())
         self.URL = self.config.get('lw', 'url')
+        self.docroot = Path(self.config.get('lw', 'docroot'))
         # functions which take single path param
         self.md_generator = {
             LightWait.MD_TITLE: LightWait._gen_title,
@@ -116,7 +117,7 @@ class LightWait(object):
         logging.info(f"Generated metadata: {metadata}")
         self._save_data(src_path, metadata)
 
-    def generate(self, target_dir: Path) -> None:
+    def generate(self, docroot: Optional[Path] = None) -> None:
         """
         Given the directory target for the generated content,
         generate blog posts from each metadata post
@@ -124,11 +125,12 @@ class LightWait(object):
         generate main and tags indexes using metadata posts,
         generate rss feed using metadata posts
 
-        @param target_dir:
+        @param docroot:
         @return:
         """
-        logging.info(f"Args: {target_dir=}")
-        stage_path = self._prepare_stage(target_dir)
+        logging.info(f"Args: {docroot=}")
+        docroot = self.docroot if docroot is None else docroot
+        stage_path = self._prepare_stage(docroot)
         self._generate_posts(stage_path)
         self._generate_indexes(stage_path)
         self._generate_rss(stage_path)

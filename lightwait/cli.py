@@ -20,7 +20,7 @@ def cli(ctx, debug):
 @click.pass_obj
 def post(lightwait: LightWait, file: Path, title: str, description: str, tags: str):
     """
-    Create a blog post using FILE.
+    Create a blog post using FILE
     The initial lines in the FILE can describe metadata
     or optional parameters can define metadata
     """
@@ -29,7 +29,8 @@ def post(lightwait: LightWait, file: Path, title: str, description: str, tags: s
                        title=title,
                        description=description,
                        tags=tags)
-        print(f"Created post for {file}")
+        lightwait.generate()
+        print(f"Published post for {file}")
     except LightwaitException as le:
         print(le)
 
@@ -39,7 +40,7 @@ def post(lightwait: LightWait, file: Path, title: str, description: str, tags: s
 @click.pass_obj
 def post_all(lightwait: LightWait, src_dir: Path):
     """
-    Create a blog post for each file in SRC_DIR.
+    Create a blog post for each file in SRC_DIR
     The initial lines in each file can describe metadata
     """
     for file in os.listdir(src_dir.as_posix()):
@@ -50,16 +51,21 @@ def post_all(lightwait: LightWait, src_dir: Path):
                 print(f"Created post for {file}")
             except LightwaitException as le:
                 print(le)
+    lightwait.generate()
+    print(f"Published posts from {src_dir}")
 
 
 @cli.command()
-@click.argument('target_dir', type=click.Path(exists=True, path_type=Path))
+@click.option('--docroot', '-d',
+              default=None,
+              type=click.Path(exists=True, path_type=Path),
+              help='Generate static content to this docroot')
 @click.pass_obj
-def generate(lightwait: LightWait, target_dir: Path):
+def generate(lightwait: LightWait, docroot: Path):
     """
-    Create html and rss content within given TARGET_DIR
+    Create html and rss content within given DOCROOT
     """
-    lightwait.generate(target_dir)
+    lightwait.generate(docroot)
 
 
 @cli.command()
