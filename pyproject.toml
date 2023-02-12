@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lightwait"
-version = "0.0.4"
+version = "0.0.4.1"
 description = "Light-wait produces the bare minimum blog content from markdown files"
 authors = ["dlange"]
 license = "CC0 1.0 Universal"
